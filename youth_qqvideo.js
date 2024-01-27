@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      2024-01-27
+// @version      2024-01-27-2016
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
 // @author       You
 // @match        *://*.youku.com/*
@@ -15,6 +15,7 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
+// @downloadURL  https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
 // ==/UserScript==
 
 (function () {
@@ -42,15 +43,30 @@
             },
         ],
         hideStyle: 'GMV_Youth_hide',
+        bodyStyle: 'GMV_Youth_doc',
         sideBarStyle: 'GMV_Youth_left_width',
         backiconStyle: 'GMV_Youth_backicon',
+        historyMainStyle: 'GMV_Youth_history_main',
+        historyHeadStyle: 'GMV_Youth_history_head',
 
         // 隐藏Dom list
-        hideDOMList: ['#ssi-policy', '.ft_cell_feedback', '.iwan-gamependant-container'],
+        hideDOMList: [
+            '#ssi-policy',
+            '.ft_cell_feedback',
+            '.ft_cell_download ',
+            '.iwan-gamependant-container',
+            '.site_footer',
+            '.quick_upload',
+            '.quick_client',
+        ],
     };
     const mainSetStyle = `
         :root {
             --left-tab-width: 120px;
+        }
+        .GMV_Youth_doc {
+            width: 100%!important;
+            min-width: auto;
         }
         .GMV_Youth_hide { display: none!important;}
         .GMV_Youth_left_width {
@@ -62,6 +78,17 @@
         .GMV_Youth_backicon {
             width: 60px;
             height: 60px;
+        }
+        .GMV_Youth_history_main {
+            float: none;
+            clear: both;
+            padding-left: 20px;
+        }
+        .GMV_Youth_history_head {
+            min-width: auto;
+        }
+        .GMV_Youth_history_mainwrap {
+            width: 100%;
         }
     `;
 
@@ -248,13 +275,16 @@
         }
 
         static async hideDOM(selector, all = false) {
+            BaseClass.addClass(selector, all, CONFIG.hideStyle);
+        }
+        static async addClass(selector, all = false, className) {
             const target = await BaseClass.getElement(selector, all);
             if (target) {
                 if (!all) {
-                    target.classList.add(CONFIG.hideStyle);
+                    target.classList.add(className);
                 } else {
                     target.forEach((item) => {
-                        item.classList.add(CONFIG.hideStyle);
+                        item.classList.add(className);
                     });
                 }
             }
@@ -268,10 +298,21 @@
 
         // 执行
         async setup() {
-            var alist = await BaseClass.getElement('.nav-wrap a.nav-item', true);
+            this.nav();
+            this.changeStyle();
+
+            // final
+            this.history();
+            this.blockDOMs();
+        }
+
+        // 处理导航
+        async nav() {
+            // 首页的导航
+            const navs = await BaseClass.getElement('.nav-wrap a.nav-item', true);
             const chns = CONFIG.filters.map((i) => i.channel);
-            alist &&
-                alist.forEach((dom) => {
+            navs &&
+                navs.forEach((dom) => {
                     const href = dom.href;
                     if (chns.find((i) => href.indexOf(i) > -1)) {
                         // console.log('filtered!!!')
@@ -280,21 +321,46 @@
                         dom.classList.add(CONFIG.hideStyle);
                     }
                 });
-
-            // final
-            this.blockDOMs();
         }
 
         async changeStyle() {
-            const leftTarget = await BaseClass.getElement('.left-nav-wrap');
-            if (leftTarget) {
-                leftTarget.classList.add(CONFIG.sideBarStyle);
-            }
+            // 首页样式处理
+            BaseClass.addClass('.left-nav-wrap', false, CONFIG.sideBarStyle);
 
-            const backIcon = await BaseClass.getElement('.ft_cell_backup');
-            if (backIcon) {
-                backIcon.classList.add(CONFIG.backiconStyle);
+            BaseClass.addClass('.ft_cell_backup', false, CONFIG.backiconStyle);
+        }
+
+        // 观看记录页面处理
+        async history() {
+            // 判断当前页面
+            const isHistory = CONFIG.nowUrl.indexOf('/history') > -1;
+            if (!isHistory) {
+                return false;
             }
+            console.log('处理历史记录页面');
+            // 左侧隐藏
+            BaseClass.hideDOM('#side_nav');
+            // 右侧清除浮动
+            BaseClass.addClass('.site_main', false, CONFIG.historyMainStyle);
+            BaseClass.addClass('#new_vs_header', false, CONFIG.historyHeadStyle);
+            BaseClass.addClass('.site_wrapper', false, 'GMV_Youth_history_mainwrap');
+
+            BaseClass.addClass('body', false, CONFIG.bodyStyle);
+
+            // 导航栏处理
+            BaseClass.hideDOM('#nav-all');
+            const chns = CONFIG.filters.map((i) => i.channel);
+            const navs = await BaseClass.getElement('#main-top-nav-wrap a', true);
+            navs &&
+                navs.forEach((dom) => {
+                    const href = dom.href;
+                    if (chns.find((i) => href.indexOf(i) > -1)) {
+                        // console.log('filtered!!!')
+                    } else {
+                        // 隐藏导航
+                        dom.classList.add(CONFIG.hideStyle);
+                    }
+                });
         }
 
         // 隐藏部分DOM内容
