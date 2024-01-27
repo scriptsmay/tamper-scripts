@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      0.0.1
+// @version      0.0.2
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
 // @author       You
 // @match        *://*.youku.com/*
@@ -419,24 +419,20 @@
                 _this.checkRunTime();
             })();
         }
-        getVersion(mothed, url) {
+        getVersion(method, url) {
             return new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
-                    method: mothed,
-                    url: url,
-                    data: '',
+                    method,
+                    url,
                     headers: { Accept: 'text/plain, text/html,application/json' },
                     onload: function (res) {
                         // console.log(res.responseText);
-                        // const line = res.responseText.match(/\/\/ @version.+/g)
-
-                        let resArray = res.responseText.split('\n');
-                        console.log(resArray);
                         let versionArray = [];
-
-                        for (let i = 0; i < resArray.length; i++) {
-                            if (resArray[i].match(/([0-999]{1,3})\.?([0-999]{1,3})?\.?([0-999]{1,3})?$/)) {
-                                versionArray.push(resArray[i]);
+                        const line = res.responseText.match(/\/\/ @version.+/g);
+                        if (line && line[0]) {
+                            const tmp = line[0].match(/([0-999]{1,3})\.?([0-999]{1,3})?\.?([0-999]{1,3})?$/);
+                            if (tmp) {
+                                versionArray.push(tmp[0]);
                             }
                         }
 
@@ -483,11 +479,8 @@
                                 let versionObj = versionArr[0].split('.');
 
                                 _this.versionOnline = [];
-
                                 _this.versionOnline[0] = versionObj[0];
-
                                 _this.versionOnline[1] = versionObj[1] ? versionObj[1] : 0;
-
                                 _this.versionOnline[2] = versionObj[2] ? versionObj[2] : 0;
 
                                 let versionNow = GM_info.script.version.split('.');
@@ -551,19 +544,17 @@
                         break;
                 }
             }
+
+            _this.showTipPage();
         }
 
         showTipPage() {
             var _this = this;
 
             let setHtml =
-                "<div class='wrap-box' style='top:auto;left:auto;bottom:5px;right:5px;transform:none;box-shadow: 0px 0px 5px #888;'>";
+                "<div class='wrap-box' style='top:auto;left:auto;bottom:5px;right:5px;transform:none;box-shadow: 0px 0px 5px #888;position: fixed;background: #fff;z-index: 999;'>";
 
-            setHtml +=
-                "<ul class='iconSetUlHead'><li class='iconSetPageHead' style='justify-content:center;'><span>发现新版本</span></li></ul>";
-
-            setHtml += "<div style='height:80px; display:flex; justify-content:center; align-items:center;'>";
-
+            setHtml += "<div style='height:60px; display:flex; justify-content:center; align-items:center;'>";
             setHtml +=
                 "<p style='width:240px;word-break:break-all;line-height:26px;'>新版本 <a href='" +
                 this.renewVersionUrl +
@@ -580,9 +571,7 @@
                 "<span id='tipRenew' style='width:50%;text-align:center;cursor: pointer;background-color:#fe6d73;color:#fff;height:40px;line-height:40px;'>查看更新</span>";
 
             setHtml += "<span id='tipBackOn' style='width:50%;text-align:center;cursor: pointer;'>忽略</span>";
-
             setHtml += '</div>';
-
             setHtml += '</div>';
 
             setTimeout(function () {
@@ -606,8 +595,6 @@
                     document.querySelector('#tipWrap').style = 'display:none';
 
                     window.open(_this.renewVersionUrl);
-
-                    //tipIconClose.click();
                 });
             }, 5000);
         }
@@ -618,5 +605,5 @@
     playVideoClass.setup();
 
     // 检查更新
-    new VersionClass();
+    // new VersionClass();
 })();
