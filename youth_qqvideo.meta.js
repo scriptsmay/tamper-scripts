@@ -16,5 +16,5 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @downloadURL  https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
-// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
+// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.meta.js
 // ==/UserScript==

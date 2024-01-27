@@ -16,7 +16,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @downloadURL  https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
-// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
+// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.meta.js
 // ==/UserScript==
 
 (function () {
@@ -404,7 +404,7 @@
         constructor() {
             super();
 
-            this.versionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
+            this.versionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.meta.js';
             this.renewVersionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
 
             let tipPageWrap = document.createElement('div');
