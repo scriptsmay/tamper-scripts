@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      2024-01-27-2016
+// @version      2024.01.27.2016
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
 // @author       You
 // @match        *://*.youku.com/*
@@ -16,6 +16,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @downloadURL  https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
+// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
 // ==/UserScript==
 
 (function () {
@@ -403,37 +404,31 @@
         constructor() {
             super();
 
+            this.versionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
+            this.renewVersionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
+
+            let tipPageWrap = document.createElement('div');
+            tipPageWrap.id = 'tipWrap';
+            document.body.appendChild(tipPageWrap);
+
             var _this = this;
 
             (async function () {
-                let getVersionTime = GM_getValue('getVersionTime', 0);
-
-                let versionNow = GM_info.script.version.split('.');
-
-                console.log(getVersionTime, versionNow);
-
-                // let resp = await _this.checkTime()
-                // if (!resp) return
-                // _this.checkRunTime()
-                // console.log('CONFIG.nowUrl', CONFIG.nowUrl);
-                console.log('isMobile', isMobile);
-
-                GM_setValue('getVersionTime', Date.now());
+                let resp = await _this.checkTime();
+                if (!resp) return;
+                _this.checkRunTime();
             })();
         }
-
         getVersion(mothed, url) {
             return new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: mothed,
                     url: url,
                     data: '',
-                    headers: {
-                        Accept: 'text/plain, text/html,application/json',
-                    },
+                    headers: { Accept: 'text/plain, text/html,application/json' },
                     onload: function (res) {
+                        console.log(res.responseText);
                         let resArray = res.responseText.split('\n');
-
                         let versionArray = [];
 
                         for (let i = 0; i < resArray.length; i++) {
@@ -446,14 +441,179 @@
                     },
                     onerror: function (err) {
                         console.log(err);
+                        //reject(err);
                     },
                 });
             });
+        }
+
+        checkTime() {
+            // const secs = 86400
+            const secs = 1;
+            return new Promise((resolve, reject) => {
+                var _this = this;
+                let installTime = GM_getValue('installTime', 0);
+                let date = new Date();
+                let dateNowTime = date.getTime();
+                let intervalTime = secs * 1000;
+                let versionIntervalTime = secs * 1000;
+
+                if (installTime) {
+                    if (dateNowTime - intervalTime > installTime) {
+                        let getVersionTime = GM_getValue('getVersionTime', 0);
+
+                        if (dateNowTime - versionIntervalTime > getVersionTime) {
+                            (async function () {
+                                let date = new Date();
+
+                                let nowTime = date.getTime();
+
+                                let versionArr = await _this.getVersion('get', _this.versionUrl);
+
+                                console.log('versionArr', versionArr);
+
+                                if (versionArr.length == 0) {
+                                    console.log('没有获取到版本号');
+                                    return;
+                                }
+
+                                let versionObj = versionArr[0].split('.');
+
+                                _this.versionOnline = [];
+
+                                _this.versionOnline[0] = versionObj[0];
+
+                                _this.versionOnline[1] = versionObj[1] ? versionObj[1] : 0;
+
+                                _this.versionOnline[2] = versionObj[2] ? versionObj[2] : 0;
+
+                                let versionNow = GM_info.script.version.split('.');
+
+                                console.log(_this.versionOnline, versionNow);
+
+                                let index;
+
+                                for (let i = 0; i < 3; i++) {
+                                    if (parseInt(_this.versionOnline[i]) > parseInt(versionNow[i])) {
+                                        index = i;
+                                        break;
+                                    }
+                                }
+
+                                GM_setValue('getVersionTime', dateNowTime);
+                                GM_setValue('vcodeResult', index);
+                                GM_setValue('versionOnline', _this.versionOnline);
+
+                                resolve(true);
+                            })();
+                        } else {
+                            resolve(true);
+                        }
+                    } else {
+                        resolve(false);
+                    }
+                } else {
+                    GM_setValue('installTime', dateNowTime);
+
+                    resolve(false);
+                }
+            });
+        }
+
+        checkRunTime() {
+            var _this = this;
+            let date = new Date();
+            let dateNowTime = date.getTime();
+            let runTipTime = GM_getValue('runTipTime', 0); //弹框时间
+            let vcodeResult = GM_getValue('vcodeResult');
+
+            _this.versionOnline = GM_getValue('versionOnline');
+
+            let tipIntervalTime = 60 * 1000;
+
+            if (dateNowTime - runTipTime > tipIntervalTime && vcodeResult != 'undefined') {
+                GM_setValue('runTipTime', dateNowTime);
+
+                switch (vcodeResult) {
+                    case 0:
+                        _this.showTipPage();
+                        break;
+
+                    case 1:
+                        _this.showTipPage();
+                        break;
+
+                    case 2:
+                        _this.showTipPage();
+                        break;
+                }
+            }
+        }
+
+        showTipPage() {
+            var _this = this;
+
+            let setHtml =
+                "<div class='wrap-box' style='top:auto;left:auto;bottom:5px;right:5px;transform:none;box-shadow: 0px 0px 5px #888;'>";
+
+            setHtml +=
+                "<ul class='iconSetUlHead'><li class='iconSetPageHead' style='justify-content:center;'><span>发现新版本</span></li></ul>";
+
+            setHtml += "<div style='height:80px; display:flex; justify-content:center; align-items:center;'>";
+
+            setHtml +=
+                "<p style='width:240px;word-break:break-all;line-height:26px;'>新版本 <a href='" +
+                this.renewVersionUrl +
+                "' target='_blank' style='color:#fe6d73;'>v" +
+                this.versionOnline.join('.') +
+                '</a> 已发布。<p>';
+
+            setHtml += '</div>';
+
+            setHtml +=
+                "<div style='display:flex; justify-content:center; align-items:center;width:300px;height:40px;background: #fef9ef;font-size:14px;'>";
+
+            setHtml +=
+                "<span id='tipRenew' style='width:50%;text-align:center;cursor: pointer;background-color:#fe6d73;color:#fff;height:40px;line-height:40px;'>查看更新</span>";
+
+            setHtml += "<span id='tipBackOn' style='width:50%;text-align:center;cursor: pointer;'>忽略</span>";
+
+            setHtml += '</div>';
+
+            setHtml += '</div>';
+
+            setTimeout(function () {
+                let versionTipDom = document.querySelector('#tipWrap');
+
+                if (!versionTipDom) return false;
+
+                versionTipDom.innerHTML = setHtml;
+
+                //document.body.appendChild(versionTipDom);
+
+                document.querySelector('#tipBackOn').addEventListener('click', function (e) {
+                    GM_setValue('installTime', new Date().getTime());
+
+                    document.querySelector('#tipWrap').style = 'display:none';
+                });
+
+                document.querySelector('#tipRenew').addEventListener('click', function (e) {
+                    GM_setValue('installTime', new Date().getTime());
+
+                    document.querySelector('#tipWrap').style = 'display:none';
+
+                    window.open(_this.renewVersionUrl);
+
+                    //tipIconClose.click();
+                });
+            }, 5000);
         }
     }
 
     // 执行
     var playVideoClass = new PlayVideoClass();
     playVideoClass.setup();
+
+    // 检查更新
     new VersionClass();
 })();
