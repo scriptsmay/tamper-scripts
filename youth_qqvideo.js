@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      2024.01.27.2016
+// @version      0.0.1
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
 // @author       You
 // @match        *://*.youku.com/*
@@ -427,12 +427,15 @@
                     data: '',
                     headers: { Accept: 'text/plain, text/html,application/json' },
                     onload: function (res) {
-                        console.log(res.responseText);
+                        // console.log(res.responseText);
+                        // const line = res.responseText.match(/\/\/ @version.+/g)
+
                         let resArray = res.responseText.split('\n');
+                        console.log(resArray);
                         let versionArray = [];
 
                         for (let i = 0; i < resArray.length; i++) {
-                            if (resArray[i].match(/^([0-999]{1,3})\.?([0-999]{1,3})?\.?([0-999]{1,3})?$/)) {
+                            if (resArray[i].match(/([0-999]{1,3})\.?([0-999]{1,3})?\.?([0-999]{1,3})?$/)) {
                                 versionArray.push(resArray[i]);
                             }
                         }
