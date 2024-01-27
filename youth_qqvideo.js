@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      0.0.2
+// @version      0.0.3
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
-// @author       You
+// @author       scriptsmay
 // @match        *://*.youku.com/*
 // @match        *://*.iqiyi.com/*
 // @match        *://v.qq.com/*
@@ -16,7 +16,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @downloadURL  https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
-// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.meta.js
+// @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js
 // ==/UserScript==
 
 (function () {
@@ -290,6 +290,12 @@
                 }
             }
         }
+        static async clickDOM(selector) {
+            const target = await BaseClass.getElement(selector);
+            if (target) {
+                target.click();
+            }
+        }
     }
 
     class PlayVideoClass extends BaseClass {
@@ -304,6 +310,7 @@
 
             // final
             this.history();
+            this.playPage();
             this.blockDOMs();
         }
 
@@ -338,7 +345,7 @@
             if (!isHistory) {
                 return false;
             }
-            console.log('处理历史记录页面');
+            // console.log('处理历史记录页面');
             // 左侧隐藏
             BaseClass.hideDOM('#side_nav');
             // 右侧清除浮动
@@ -362,6 +369,62 @@
                         dom.classList.add(CONFIG.hideStyle);
                     }
                 });
+        }
+
+        // 视频播放页面清理
+        async playPage() {
+            const isPlayPage = await BaseClass.getElement('.page-play');
+            if (!isPlayPage) {
+                // console.log('非播放页');
+                return false;
+            }
+            // header 隐藏
+            BaseClass.hideDOM('#ssi-header');
+            BaseClass.hideDOM('.page-content__bottom');
+
+            // 获取video元素
+            const video = await BaseClass.getElement('video');
+            // console.log('video', video);
+            if (video) {
+                this._hasVideo = true;
+                this._video = video;
+            } else {
+                this._hasVideo = false;
+            }
+
+            this.bindPlayEvent();
+        }
+
+        // 监听视频播放事件
+        bindPlayEvent() {
+            if (!this._hasVideo) {
+                return;
+            }
+            this._video.addEventListener('pause', () => {
+                // console.log('暂停播放');
+                // 一些页面会出现广告，清理一下
+                this.clearPlayAds();
+            });
+            this._video.addEventListener('play', () => {
+                // console.log('开始播放');
+                if (this._timerClearPlay) {
+                    clearTimeout(this._timerClearPlay);
+                }
+            });
+        }
+
+        clearPlayAds() {
+            if (this._timerClearPlay) {
+                clearTimeout(this._timerClearPlay);
+            }
+            // 缓冲关闭广告
+            this._timerClearPlay = setTimeout(async () => {
+                // 关闭广告
+                if (this._video.paused) {
+                    BaseClass.clickDOM('.txp_full_screen_pause-close');
+                    BaseClass.clickDOM('.txp_zt_close');
+                }
+            }, 100);
         }
 
         // 隐藏部分DOM内容
@@ -396,7 +459,7 @@
                         item.click();
                     });
                 }
-            }, 1500);
+            }, 3000);
         }
     }
 
@@ -404,7 +467,7 @@
         constructor() {
             super();
 
-            this.versionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.meta.js';
+            this.versionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
             this.renewVersionUrl = 'https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/youth_qqvideo.js';
 
             let tipPageWrap = document.createElement('div');
@@ -438,7 +501,7 @@
 
                         resolve(versionArray);
                     },
-                    onerror: function (err) {
+                    onerror: (err) => {
                         console.log(err);
                         //reject(err);
                     },
@@ -468,9 +531,6 @@
                                 let nowTime = date.getTime();
 
                                 let versionArr = await _this.getVersion('get', _this.versionUrl);
-
-                                console.log('versionArr', versionArr);
-
                                 if (versionArr.length == 0) {
                                     console.log('没有获取到版本号');
                                     return;
@@ -485,7 +545,7 @@
 
                                 let versionNow = GM_info.script.version.split('.');
 
-                                console.log(_this.versionOnline, versionNow);
+                                // console.log(_this.versionOnline, versionNow);
 
                                 let index;
 
