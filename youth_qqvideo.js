@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      0.0.4
-// @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域。updateTime:2024-05-11 19:23
+// @version      0.0.5
+// @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域。updateTime:2024-05-11 19:44
 // @author       scriptsmay
 // @match        *://*.youku.com/*
 // @match        *://*.iqiyi.com/*
