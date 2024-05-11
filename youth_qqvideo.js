@@ -2,9 +2,8 @@
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
 // @version      0.0.4
-// @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
+// @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域。updateTime:2024-05-11 19:23
 // @author       scriptsmay
-// @updateTime   2024-05-11 19:23
 // @match        *://*.youku.com/*
 // @match        *://*.iqiyi.com/*
 // @match        *://v.qq.com/*
@@ -107,15 +106,18 @@
             .play-layout {
                 padding: 0!important;
             }
+            .page-content__right {
+                margin-left: 0!important;
+            }
             .playlist-vip-section__vip {
                 display: none!important;
             }
-            .comment-lazy, .playlist-intro__actions, .playlist-side__sub {
+            .comment-lazy, .playlist-intro__actions, .playlist-side__sub, #ssi-footer {
                 display: none!important;
             }
             .select-container__scroller {
                 flex-wrap: wrap!important;
-                white-space: normal!important;
+                transform: none!important;
             }
         }
     `;
