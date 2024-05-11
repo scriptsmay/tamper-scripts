@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         腾讯视频少儿模式
 // @namespace    youth-qqvideo
-// @version      0.0.3
+// @version      0.0.4
 // @description  腾讯视频网页默认进入少儿模式，导航只显示动漫和少儿，尝试屏蔽部分广告区域
 // @author       scriptsmay
+// @updateTime   2024-05-11 19:23
 // @match        *://*.youku.com/*
 // @match        *://*.iqiyi.com/*
 // @match        *://v.qq.com/*
@@ -49,6 +50,7 @@
         backiconStyle: 'GMV_Youth_backicon',
         historyMainStyle: 'GMV_Youth_history_main',
         historyHeadStyle: 'GMV_Youth_history_head',
+        style0: 'GMV_Youth_pd0',
 
         // 隐藏Dom list
         hideDOMList: [
@@ -91,6 +93,31 @@
         .GMV_Youth_history_mainwrap {
             width: 100%;
         }
+        .GMV_Youth_pd0 {
+            padding: 0!important;
+        }
+    `;
+
+    // 小屏幕样式适应（部分电视机分辨率很小）
+    const mediaQueryStyle = `
+        @media screen and (max-width: 900px) {
+            body {
+                min-width: 100%!important;
+            }
+            .play-layout {
+                padding: 0!important;
+            }
+            .playlist-vip-section__vip {
+                display: none!important;
+            }
+            .comment-lazy, .playlist-intro__actions, .playlist-side__sub {
+                display: none!important;
+            }
+            .select-container__scroller {
+                flex-wrap: wrap!important;
+                white-space: normal!important;
+            }
+        }
     `;
 
     /*--Class--*/
@@ -104,6 +131,7 @@
 
         setStyle() {
             domStyle.appendChild(document.createTextNode(mainSetStyle));
+            domStyle.appendChild(document.createTextNode(mediaQueryStyle));
 
             domHead.appendChild(domStyle);
         }
@@ -381,6 +409,9 @@
             // header 隐藏
             BaseClass.hideDOM('#ssi-header');
             BaseClass.hideDOM('.page-content__bottom');
+
+            // 播放界面样式处理
+            BaseClass.addClass('.play-layout', CONFIG.style0);
 
             // 获取video元素
             const video = await BaseClass.getElement('video');
