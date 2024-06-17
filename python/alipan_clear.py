@@ -21,9 +21,13 @@ push_msg_content = ""
 
 def init_para() -> None:
     global refresh_token
-    global folder_id
     refresh_token = read_secure_file("mytoken.txt").strip()
+    
+    global folder_id
     folder_id = read_secure_file("temp_transfer_folder_id.txt").strip()
+    
+    global ip_address
+    ip_address = read_secure_file("docker_address.txt").strip()
     
     global TG_SEND_KEY
     TG_SEND_KEY = read_secure_file("tg_send_key.txt").strip()
@@ -43,11 +47,6 @@ def read_secure_file(file_name: str) -> str:
     except FileNotFoundError:
         return ""
 
-
-def construct_message(content):
-    # 假设我们想构造一个特定格式的消息
-    message = f"Your custom message: {content}"
-    return message
 
 def push_msg(message_content):
     """
@@ -301,6 +300,7 @@ def main():
     echo(f"[{datetime.now().strftime('%Y/%m/%d %H:%M:%S')}]小雅缓存清理(ver={VERSION})运行中")
     clear_aliyun()
     
+    echo(f"地址：{ip_address}")
     echo(f"[{datetime.now().strftime('%Y/%m/%d %H:%M:%S')}]清理完成。")
     
     # tg推送
