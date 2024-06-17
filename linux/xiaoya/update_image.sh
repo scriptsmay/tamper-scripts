@@ -50,7 +50,7 @@ function SEND_MSG() {
 }
 
 # 如果DOCKER_USERNAME 有值则
-if [[ -z "$DOCKER_USERNAME" ]]; then
+if [[ ! -z "$DOCKER_USERNAME" ]]; then
     docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD registry.cn-hangzhou.aliyuncs.com
 fi 
 
