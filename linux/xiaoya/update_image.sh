@@ -3,6 +3,9 @@
 # 自用的小雅每日更新脚本
 # Ps. 我的机器是macos，仅在本机测试通过
 
+# 一键执行命令为：
+# curl -sSL https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/linux/xiaoya/update_image.sh | sh
+
 # 自定义镜像名称
 image_name=registry.cn-hangzhou.aliyuncs.com/virola/xiaoyaliu_alist:latest
 config_dir=/Users/virola/workspace/docker/xiaoya
@@ -11,9 +14,17 @@ config_dir=/Users/virola/workspace/docker/xiaoya
 # 定义消息推送API的URL
 API_URL="https://vercel.virola.me/api/send"
 SEND_KEY=""
+DOCKER_USERNAME=""
+DOCKER_PASSWORD=""
 
 if [[ -f $config_dir/tg_send_key.txt ]] && [[ -s $config_dir/tg_send_key.txt ]]; then
     SEND_KEY=$(cat $config_dir/tg_send_key.txt)
+fi
+
+# 是否登录指定镜像仓库
+if [[ -f $config_dir/docker_user.txt ]] && [[ -s $config_dir/docker_user.txt ]]; then
+    DOCKER_USERNAME=$(head -n1 $config_dir/docker_user.txt)
+    DOCKER_PASSWORD=$(head -n2 $config_dir/docker_user.txt)
 fi
 
 function SEND_MSG() {
@@ -37,6 +48,11 @@ function SEND_MSG() {
         exit 1
     fi
 }
+
+# 如果DOCKER_USERNAME 有值则
+if [[ -z "$DOCKER_USERNAME" ]]; then
+    docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD registry.cn-hangzhou.aliyuncs.com
+fi 
 
 # 更新容器
 docker stop xiaoya 2>/dev/null
