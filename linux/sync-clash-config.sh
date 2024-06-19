@@ -24,6 +24,13 @@ backup(){
 sync_config(){
   makesure_network
   wget -q -O ${base_path}/config.yaml $subscribe_addr --no-check-certificate
+
+  # 检查下载是否成功
+  if [ $? -ne 0 ] || [ ! -f "${base_path}/config.yaml" ]; then
+      echo "Failed to download or file not found after download. Restoring config..."
+      restor_config
+      return 1
+  fi
   # 允许局域网访问
   sed -i "/allow-lan: false/s/false/true/;s/log-level: silent/log-level: info/g;s/secret:.*/secret: '$ui_secret'/g;" ${base_path}/config.yaml
 
@@ -34,5 +41,9 @@ sync_config(){
 }
 
 # backup && sync_config 
+
+current=$(date "+%Y-%m-%d %H:%M:%S")
+
+echo "开始同步配置文件: $current"
 
 backup && sync_config || restor_config
