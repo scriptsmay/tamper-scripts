@@ -2,8 +2,8 @@
 
 # scp ./sync-clash-config.sh root@192.168.31.100:/opt/clash/
 
-source ./env.sh
 base_path=/opt/clash
+source $base_path/env.sh
 
 restor_config(){
   echo 'sync fail, restore...'
