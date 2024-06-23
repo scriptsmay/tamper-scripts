@@ -2,7 +2,11 @@
 
 # scp ./sync-clash-config.sh root@192.168.31.100:/opt/clash/
 
+# 配置文件路径
 base_path=/opt/clash
+# UI 路径
+ui_path=clash-dashboard/yacd
+
 source $base_path/env.sh
 
 restor_config(){
@@ -35,7 +39,7 @@ sync_config(){
   sed -i "/allow-lan: false/s/false/true/;s/log-level: silent/log-level: info/g;s/secret:.*/secret: '$ui_secret'/g;" ${base_path}/config.yaml
 
   # add controller
-  sed -i "/external-controller.*/a external-ui: ${base_path}/clash-dashboard/dist" ${base_path}/config.yaml 2>&1
+  sed -i "/external-controller.*/a external-ui: ${base_path}/${ui_path}" ${base_path}/config.yaml 2>&1
 
   systemctl restart clash && echo "sync ok" && return 0 || { echo "sync fail" && return 1; }
 }

@@ -17,5 +17,5 @@ function FindProxyForURL(url, host) {
     }
 
     // 将所有流量通过代理服务器转发
-    return 'PROXY 192.168.1.3:7890';
+    return 'PROXY 192.168.31.100:7890';
 }
