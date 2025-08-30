@@ -6,6 +6,11 @@
 // @author       scriptsmay
 // @match        *://weibo.com/*
 // @match        *://www.weibo.com/*
+// @exclude      *://weibo.com/u/*
+// @exclude      https://weibo.com/tv/*
+// @exclude      https://www.weibo.com/tv/*
+// @exclude      https://weibo.com/p/*
+// @exclude      https://www.weibo.com/p/*
 // @icon         https://weibo.com/favicon.ico
 // @grant        GM_xmlhttpRequest
 // @grant        GM_registerMenuCommand
@@ -188,7 +193,7 @@ let globalTimerId;
     };
 
     const resJson = await httpRequest(url, 'GET', params);
-    console.log('resJson===>', resJson);
+    // console.log('resJson===>', resJson);
 
     const comments = resJson.data.filter((item) => {
       if (!GM_getValue('filterAuthor', false)) {
@@ -196,14 +201,21 @@ let globalTimerId;
       }
       return item.is_mblog_author == true;
     });
-    comments.forEach((item) => {
-      const t = new Date(item.created_at);
-      console.log(t.toLocaleString(), item.text);
-    });
+    console.log('comments', comments);
     const html = comments
       .map((i) => {
+        const imgs = [];
+        i.url_struct &&
+          i.url_struct.forEach((item) => {
+            const picInfos = item.pic_infos;
+            for (const [id, pic] of Object.entries(picInfos)) {
+              pic.large?.url && imgs.push(pic.large?.url);
+            }
+          });
+
         const t = new Date(i.created_at);
-        return `
+        let result =
+          `
         <div class="wbpro-list yawf-feed-comment">
         <div class="item1">
           <div class="text yawf-feed-comment-text"><a>${
@@ -212,9 +224,15 @@ let globalTimerId;
           <div class="info woo-box-flex woo-box-alignCenter woo-box-justifyBetween" yawf-component-tag="woo-box">
             <div>${t.toLocaleString()} <span> ${i.source}</span></div>
           </div>
+          ` +
+          (imgs.length
+            ? imgs.map((img) => `<div style=""><img src="${img}" class="picture-viewer_pic_37YQ3"></div>`)
+            : '') +
+          `
           </div>
         </div>
         `;
+        return result;
       })
       .join('');
 
@@ -225,8 +243,8 @@ let globalTimerId;
   function initPage() {
     if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
       // 判断是在详情页
-      const bar = document.querySelector('div.Bar_main_R1N5v');
-      if (!bar) {
+      const commentDom = document.querySelector('div.Detail_mar2_2Q6IG');
+      if (!commentDom) {
         return false;
       }
       const cards = document.body.querySelectorAll('article.woo-panel-main');
