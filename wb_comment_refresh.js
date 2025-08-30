@@ -22,8 +22,6 @@ let globalTimerId;
 (function () {
   'use strict';
 
-  // GM_setValue('filterAuthor', document.getElementById('filterAuthor').checked);
-
   function objectToQueryString(obj) {
     const params = new URLSearchParams();
     for (const key in obj) {
@@ -84,17 +82,6 @@ let globalTimerId;
     }
   }
 
-  new MutationObserver(() => {
-    // console.log(mutationList);
-    if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
-      const cards = document.body.querySelectorAll('article.woo-panel-main');
-      // console.log(cards);
-      for (const card of cards) {
-        handleCard(card);
-      }
-    }
-  }).observe(document.body, { attributes: false, childList: true, subtree: true });
-
   // 添加刷新按钮
   function handleCard(card) {
     const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
@@ -125,6 +112,9 @@ let globalTimerId;
       '<span class="woo-like-iconWrap"><i class="woo-font woo-font--refresh woo-like-icon"></i></span><span class="woo-like-count">开始刷新</span>';
     dlBtn.addEventListener('click', async function (event) {
       event.preventDefault();
+      // 显示高亮
+      this.classList.add('toolbar_cur_JoD5A');
+
       const article = this.closest('article.woo-panel-main');
       if (article) {
         const header = article.getElementsByTagName('header')[0];
@@ -139,6 +129,7 @@ let globalTimerId;
     footer.firstChild.firstChild.firstChild.appendChild(dlBtnDiv);
   }
 
+  // 过滤按钮 .toolbar_cur_JoD5A
   function addFilterBtn(footer) {
     // console.log('add my-refresh button');
     let filBtnDiv = document.createElement('div');
@@ -147,7 +138,9 @@ let globalTimerId;
     divInDiv.className =
       'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
     let filBtn = document.createElement('button');
-    filBtn.className = 'woo-like-main toolbar_btn_Cg9tz author-filter-button';
+    filBtn.className =
+      'woo-like-main toolbar_btn_Cg9tz author-filter-button' +
+      (GM_getValue('filterAuthor', false) ? ' toolbar_cur_JoD5A' : '');
     filBtn.setAttribute('tabindex', '0');
     filBtn.setAttribute('title', '只看博主');
     filBtn.innerHTML =
@@ -155,6 +148,8 @@ let globalTimerId;
     filBtn.addEventListener('click', async function (event) {
       event.preventDefault();
       GM_setValue('filterAuthor', !GM_getValue('filterAuthor', false));
+      // 显示或不显示高亮
+      this.classList.toggle('toolbar_cur_JoD5A');
     });
     divInDiv.appendChild(filBtn);
     filBtnDiv.appendChild(divInDiv);
@@ -211,9 +206,9 @@ let globalTimerId;
         return `
         <div class="wbpro-list yawf-feed-comment">
         <div class="item1">
-          <div class="text yawf-feed-comment-text">${
+          <div class="text yawf-feed-comment-text"><a>${
             i.user.screen_name
-          }:<span class="yawf-feed-comment-content yawf-feed-detail-content-handler">${i.text}</span></div>
+          }</a>:<span class="yawf-feed-comment-content yawf-feed-detail-content-handler">${i.text}</span></div>
           <div class="info woo-box-flex woo-box-alignCenter woo-box-justifyBetween" yawf-component-tag="woo-box">
             <div>${t.toLocaleString()} <span> ${i.source}</span></div>
           </div>
@@ -224,6 +219,28 @@ let globalTimerId;
       .join('');
 
     const commentBox = document.getElementById('scroller');
-    commentBox.innerHTML = html;
+    commentBox.innerHTML = `<div class="vue-recycle-scroller__item-wrapper" style="min-height: 800px;">${html}</div>`;
   }
+
+  function initPage() {
+    if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
+      // 判断是在详情页
+      const bar = document.querySelector('div.Bar_main_R1N5v');
+      if (!bar) {
+        return false;
+      }
+      const cards = document.body.querySelectorAll('article.woo-panel-main');
+      // console.log(cards);
+      for (const card of cards) {
+        handleCard(card);
+      }
+    }
+  }
+
+  new MutationObserver(() => {
+    initPage();
+  }).observe(document.body, { attributes: false, childList: true, subtree: true });
+
+  // initPage();
+  console.log('filterAuthor===>', GM_getValue('filterAuthor', false));
 })();
