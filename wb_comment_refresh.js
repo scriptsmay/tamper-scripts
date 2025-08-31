@@ -114,7 +114,7 @@ let globalTimerId;
     dlBtn.setAttribute('tabindex', '0');
     dlBtn.setAttribute('title', '刷新');
     dlBtn.innerHTML =
-      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--refresh woo-like-icon"></i></span><span class="woo-like-count">开始刷新</span>';
+      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--refresh woo-like-icon"></i></span><span class="woo-like-count">刷新</span>';
     dlBtn.addEventListener('click', async function (event) {
       event.preventDefault();
       // 显示高亮
@@ -149,7 +149,7 @@ let globalTimerId;
     filBtn.setAttribute('tabindex', '0');
     filBtn.setAttribute('title', '只看博主');
     filBtn.innerHTML =
-      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--check woo-like-icon"></i></span><span class="woo-like-count">只看博主</span>';
+      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--check woo-like-icon"></i></span><span class="woo-like-count">过滤</span>';
     filBtn.addEventListener('click', async function (event) {
       event.preventDefault();
       GM_setValue('filterAuthor', !GM_getValue('filterAuthor', false));
