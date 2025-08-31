@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         微博评论自动刷新
 // @namespace    wb_comment_refresh
-// @version      0.0.1
+// @version      0.0.2
 // @description  微博评论自动刷新
 // @author       scriptsmay
 // @match        *://weibo.com/*
