@@ -237,7 +237,7 @@ let globalTimerId;
       .join('');
 
     const commentBox = document.getElementById('scroller');
-    commentBox.innerHTML = `<div class="vue-recycle-scroller__item-wrapper" style="min-height: 800px;">${html}</div>`;
+    commentBox.innerHTML = `<div class="vue-recycle-scroller__item-wrapper" style="min-height: 600px;">${html}</div>`;
   }
 
   function initPage() {
