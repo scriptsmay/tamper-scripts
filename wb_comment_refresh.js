@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         微博评论自动刷新
 // @namespace    wb_comment_refresh
-// @version      0.0.2
-// @description  微博评论自动刷新
+// @version      0.0.3
+// @description  微博评论自动刷新，优化版
 // @author       scriptsmay
 // @match        *://weibo.com/*
 // @match        *://www.weibo.com/*
@@ -22,11 +22,72 @@
 // @updateURL    https://raw.githubusercontent.com/scriptsmay/tamper-scripts/main/wb_comment_refresh.js
 // ==/UserScript==
 
+// ============ 常量定义区 ============
+// DOM 类名常量
+const CLASS = {
+  // 主文章容器
+  ARTICLE: 'article.woo-panel-main',
+
+  // 工具栏相关
+  TOOLBAR_BOX_CLASS: 'woo-box-flex',
+  TOOLBAR_ITEM: 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V',
+  TOOLBAR_BUTTON_WRAP: 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ toolbar_wrap_np6Ug',
+  TOOLBAR_BUTTON: 'woo-like-main toolbar_btn_Cg9tz',
+  TOOLBAR_ACTIVE: '_cur_198pe_148',
+  TOOLBAR_NUM: 'toolbar_num_JXZul',
+  TOOLBAR_LEFT: 'woo-box-flex woo-box-alignCenter toolbar_left_2vlsY toolbar_main_3Mxwo',
+
+  // 按钮相关
+  LIKE_ICON_WRAP: 'woo-like-iconWrap',
+  LIKE_ICON: 'woo-font woo-font--refresh woo-like-icon',
+  FILTER_ICON: 'woo-font woo-font--check woo-like-icon',
+
+  // 自定义按钮类名
+  REFRESH_BUTTON: 'my-refresh-button',
+  FILTER_BUTTON: 'author-filter-button',
+
+  // 其他元素
+  DETAIL_PAGE: '._detail_zsq3w_2',
+  TIME_LINK: 'head-info_time_6sFQg',
+  PICTURE_VIEWER: 'picture-viewer_pic_37YQ3'
+};
+
+// 按钮配置
+const BUTTON_CONFIG = {
+  REFRESH: {
+    title: '刷新',
+    iconClass: CLASS.LIKE_ICON,
+    text: '刷新'
+  },
+  FILTER: {
+    title: '只看博主',
+    iconClass: CLASS.FILTER_ICON,
+    text: '过滤'
+  }
+};
+
+// API配置
+const API_CONFIG = {
+  SHOW_STATUS: '/ajax/statuses/show',
+  BUILD_COMMENTS: '/ajax/statuses/buildComments'
+};
+
+// 全局设置键名
+const SETTINGS = {
+  FILTER_AUTHOR: 'filterAuthor'
+};
+
+// ============ 全局变量 ============
 let globalTimerId;
 
 (function () {
   'use strict';
 
+  // ============ 工具函数 ============
+
+  /**
+   * 对象转查询字符串
+   */
   function objectToQueryString(obj) {
     const params = new URLSearchParams();
     for (const key in obj) {
@@ -36,6 +97,10 @@ let globalTimerId;
     }
     return params.toString();
   }
+
+  /**
+   * HTTP请求封装
+   */
   function httpRequest(url, method = 'GET', data = null) {
     return new Promise(function (resolve, reject) {
       if (method.toUpperCase() === 'GET' && typeof data === 'object' && data !== null) {
@@ -58,7 +123,7 @@ let globalTimerId;
         resolve(null);
       };
       oReq.setRequestHeader('X-XSRF-TOKEN', getCookie('XSRF-TOKEN'));
-      // 对于GET请求，不需要发送数据体
+
       if (method.toUpperCase() === 'GET') {
         oReq.send();
       } else if (typeof data === 'string') {
@@ -73,6 +138,9 @@ let globalTimerId;
     });
   }
 
+  /**
+   * 获取Cookie
+   */
   function getCookie(key = null) {
     let cookiesArr = document.cookie.split('; ');
     let cookiesObj = {};
@@ -80,185 +148,303 @@ let globalTimerId;
       let [name, value] = cookie.split('=');
       cookiesObj[name] = value;
     }
-    if (key) {
-      return cookiesObj[key];
-    } else {
-      return cookiesObj;
+    return key ? cookiesObj[key] : cookiesObj;
+  }
+
+  // ============ DOM操作函数 ============
+
+  /**
+   * 创建按钮元素
+   */
+  function createButtonElement(buttonConfig, customClass, clickHandler) {
+    const buttonDiv = document.createElement('div');
+    buttonDiv.className = CLASS.TOOLBAR_ITEM;
+
+    const wrapDiv = document.createElement('div');
+    wrapDiv.className = CLASS.TOOLBAR_BUTTON_WRAP;
+
+    const button = document.createElement('button');
+    button.className = `${CLASS.TOOLBAR_BUTTON} ${customClass}`;
+    button.setAttribute('tabindex', '0');
+    button.setAttribute('title', buttonConfig.title);
+
+    button.innerHTML = `
+      <span class="${CLASS.LIKE_ICON_WRAP}">
+        <i class="${buttonConfig.iconClass}"></i>
+      </span>
+      <span class="${CLASS.TOOLBAR_NUM}">${buttonConfig.text}</span>
+    `;
+
+    if (clickHandler) {
+      button.addEventListener('click', clickHandler);
+    }
+
+    wrapDiv.appendChild(button);
+    buttonDiv.appendChild(wrapDiv);
+
+    return { buttonDiv, button };
+  }
+
+  /**
+   * 获取工具栏容器
+   */
+  function getToolbarContainer(footer) {
+    return footer.querySelector(`.${CLASS.TOOLBAR_BOX_CLASS}`);
+  }
+
+  /**
+   * 插入到工具栏第一个位置
+   */
+  function insertToToolbarFirst(toolbarContainer, buttonDiv) {
+    if (toolbarContainer && toolbarContainer.firstChild) {
+      toolbarContainer.insertBefore(buttonDiv, toolbarContainer.firstChild);
+    } else if (toolbarContainer) {
+      toolbarContainer.appendChild(buttonDiv);
     }
   }
 
-  // 添加刷新按钮
+  /**
+   * 处理卡片，添加功能按钮
+   */
   function handleCard(card) {
     const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
-    // console.log(imgs);
-    if (footer) {
-      if (footer.getElementsByClassName('my-refresh-button').length > 0) {
-        console.log('already added my-refresh button');
-      } else {
-        // console.log(footer.parentElement);
-        addRefreshBtn(footer);
-        addFilterBtn(footer);
-      }
+    if (!footer) return;
+    console.log('footer');
+
+    const container = getToolbarContainer(footer);
+    if (!container) return;
+
+    console.log('container');
+
+    // 检查是否已添加按钮
+    if (container.getElementsByClassName(CLASS.REFRESH_BUTTON).length > 0) {
+      console.log('按钮已添加');
+      return;
+    }
+
+    // 添加刷新按钮
+    addRefreshButton(container);
+
+    // 添加过滤按钮
+    addFilterButton(container);
+  }
+
+  /**
+   * 添加刷新按钮
+   */
+  function addRefreshButton(container) {
+    const { buttonDiv, button } = createButtonElement(
+      BUTTON_CONFIG.REFRESH,
+      CLASS.REFRESH_BUTTON,
+      handleRefreshClick
+    );
+
+    insertToToolbarFirst(container, buttonDiv);
+  }
+
+  /**
+   * 刷新按钮点击处理
+   */
+  async function handleRefreshClick(event) {
+    event.preventDefault();
+
+    if (globalTimerId) {
+      clearInterval(globalTimerId);
+      this.classList.remove(CLASS.TOOLBAR_ACTIVE);
+      globalTimerId = null;
+      return;
+    }
+
+    // 显示高亮
+    this.classList.add(CLASS.TOOLBAR_ACTIVE);
+
+    const postLink = location.href;
+    console.log('click refresh postLink', postLink);
+
+    let postId = postLink.split('/').pop();
+    const url = `https://${location.host}${API_CONFIG.SHOW_STATUS}?id=${postId}`;
+
+    const resJson = await httpRequest(url);
+    if (resJson) {
+      startRefresh(resJson);
     }
   }
 
-  function addRefreshBtn(footer) {
-    // console.log('add my-refresh button');
-    let dlBtnDiv = document.createElement('div');
-    dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
-    let divInDiv = document.createElement('div');
-    divInDiv.className =
-      'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
-    let dlBtn = document.createElement('button');
-    dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz my-refresh-button';
-    dlBtn.setAttribute('tabindex', '0');
-    dlBtn.setAttribute('title', '刷新');
-    dlBtn.innerHTML =
-      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--refresh woo-like-icon"></i></span><span class="woo-like-count">刷新</span>';
-    dlBtn.addEventListener('click', async function (event) {
-      event.preventDefault();
-      // 显示高亮
-      this.classList.add('toolbar_cur_JoD5A');
+  /**
+   * 添加过滤按钮
+   */
+  function addFilterButton(container) {
+    const isFilterActive = GM_getValue(SETTINGS.FILTER_AUTHOR, false);
+    const activeClass = isFilterActive ? ` ${CLASS.TOOLBAR_ACTIVE}` : '';
 
-      const article = this.closest('article.woo-panel-main');
-      if (article) {
-        const header = article.getElementsByTagName('header')[0];
-        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-        let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-        const resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + postId);
-        startRefresh(resJson);
-      }
-    });
-    divInDiv.appendChild(dlBtn);
-    dlBtnDiv.appendChild(divInDiv);
-    footer.firstChild.firstChild.firstChild.appendChild(dlBtnDiv);
+    const { buttonDiv, button } = createButtonElement(
+      BUTTON_CONFIG.FILTER,
+      `${CLASS.FILTER_BUTTON}${activeClass}`,
+      handleFilterClick
+    );
+
+    insertToToolbarFirst(container, buttonDiv);
   }
 
-  // 过滤按钮 .toolbar_cur_JoD5A
-  function addFilterBtn(footer) {
-    // console.log('add my-refresh button');
-    let filBtnDiv = document.createElement('div');
-    filBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
-    let divInDiv = document.createElement('div');
-    divInDiv.className =
-      'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
-    let filBtn = document.createElement('button');
-    filBtn.className =
-      'woo-like-main toolbar_btn_Cg9tz author-filter-button' +
-      (GM_getValue('filterAuthor', false) ? ' toolbar_cur_JoD5A' : '');
-    filBtn.setAttribute('tabindex', '0');
-    filBtn.setAttribute('title', '只看博主');
-    filBtn.innerHTML =
-      '<span class="woo-like-iconWrap"><i class="woo-font woo-font--check woo-like-icon"></i></span><span class="woo-like-count">过滤</span>';
-    filBtn.addEventListener('click', async function (event) {
-      event.preventDefault();
-      GM_setValue('filterAuthor', !GM_getValue('filterAuthor', false));
-      // 显示或不显示高亮
-      this.classList.toggle('toolbar_cur_JoD5A');
-    });
-    divInDiv.appendChild(filBtn);
-    filBtnDiv.appendChild(divInDiv);
-    footer.firstChild.firstChild.firstChild.appendChild(filBtnDiv);
+  /**
+   * 过滤按钮点击处理
+   */
+  async function handleFilterClick(event) {
+    event.preventDefault();
+
+    const newValue = !GM_getValue(SETTINGS.FILTER_AUTHOR, false);
+    GM_setValue(SETTINGS.FILTER_AUTHOR, newValue);
+
+    // 切换高亮状态
+    this.classList.toggle(CLASS.TOOLBAR_ACTIVE);
   }
 
+  // ============ 评论刷新功能 ============
+
+  /**
+   * 开始刷新评论
+   */
   function startRefresh(data) {
-    console.log('start refresh!!!');
+    console.log('开始刷新评论');
+
+    // 清除之前的定时器
     if (globalTimerId) {
       clearInterval(globalTimerId);
     }
+
     globalTimerId = setInterval(async function () {
-      handleCommentData(data.id, data.user.idstr);
+      await handleCommentData(data.id, data.user.idstr);
     }, 5000);
   }
 
-  // function stopRefresh() {
-  //   console.log('stop refresh');
-  //   clearInterval(globalTimerId);
-  // }
-
+  /**
+   * 处理评论数据
+   */
   async function handleCommentData(postId, userId) {
-    const url = 'https://' + location.host + '/ajax/statuses/buildComments';
+    const url = `https://${location.host}${API_CONFIG.BUILD_COMMENTS}`;
     const params = {
       is_asc: 0,
       is_reload: 1,
-      // 5204231859471582
       id: postId,
       is_show_bulletin: 3,
       is_mix: 0,
       count: 10,
-      // 5372718359
       uid: userId,
       fetch_level: 0,
       locale: 'en',
     };
 
     const resJson = await httpRequest(url, 'GET', params);
-    // console.log('resJson===>', resJson);
+    if (!resJson || !resJson.data) return;
 
+    const filterAuthor = GM_getValue(SETTINGS.FILTER_AUTHOR, false);
     const comments = resJson.data.filter((item) => {
-      if (!GM_getValue('filterAuthor', false)) {
-        return true;
-      }
-      return item.is_mblog_author == true;
+      return !filterAuthor || item.is_mblog_author == true;
     });
-    console.log('comments', comments);
-    const html = comments
-      .map((i) => {
-        const imgs = [];
-        i.url_struct &&
-          i.url_struct.forEach((item) => {
-            const picInfos = item.pic_infos;
-            for (const [id, pic] of Object.entries(picInfos)) {
-              pic.large?.url && imgs.push(pic.large?.url);
-            }
-          });
 
-        const t = new Date(i.created_at);
-        let result =
-          `
-        <div class="wbpro-list yawf-feed-comment">
-        <div class="item1">
-          <div class="text yawf-feed-comment-text"><a>${
-            i.user.screen_name
-          }</a>:<span class="yawf-feed-comment-content yawf-feed-detail-content-handler">${i.text}</span></div>
-          <div class="info woo-box-flex woo-box-alignCenter woo-box-justifyBetween" yawf-component-tag="woo-box">
-            <div>${t.toLocaleString()} <span> ${i.source}</span></div>
-          </div>
-          ` +
-          (imgs.length
-            ? imgs.map((img) => `<div style=""><img src="${img}" class="picture-viewer_pic_37YQ3"></div>`)
-            : '') +
-          `
-          </div>
-        </div>
-        `;
-        return result;
-      })
-      .join('');
-
-    const commentBox = document.getElementById('scroller');
-    commentBox.innerHTML = `<div class="vue-recycle-scroller__item-wrapper" style="min-height: 600px;">${html}</div>`;
+    console.log(`获取到评论:${comments.length}条`);
+    renderComments(comments);
   }
 
-  function initPage() {
-    if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
-      // 判断是在详情页
-      const commentDom = document.querySelector('div.Detail_mar2_2Q6IG');
-      if (!commentDom) {
-        return false;
-      }
-      const cards = document.body.querySelectorAll('article.woo-panel-main');
-      // console.log(cards);
-      for (const card of cards) {
-        handleCard(card);
-      }
+  /**
+   * 渲染评论列表
+   */
+  function renderComments(comments) {
+    const html = comments.map(comment => createCommentHTML(comment)).join('');
+    const commentBox = document.getElementById('scroller');
+
+    if (commentBox) {
+      commentBox.innerHTML = `<div class="vue-recycle-scroller__item-wrapper" style="min-height: 600px;">${html}</div>`;
     }
   }
 
-  new MutationObserver(() => {
-    initPage();
-  }).observe(document.body, { attributes: false, childList: true, subtree: true });
+  /**
+   * 创建评论HTML
+   */
+  function createCommentHTML(comment) {
+    const imgs = extractImagesFromComment(comment);
+    const time = new Date(comment.created_at);
 
-  // initPage();
-  console.log('filterAuthor===>', GM_getValue('filterAuthor', false));
+    let imagesHTML = '';
+    if (imgs.length > 0) {
+      imagesHTML = imgs.map(img =>
+        `<div><img src="${img}" class="${CLASS.PICTURE_VIEWER}" style="max-width:100%;"></div>`
+      ).join('');
+    }
+
+    return `
+      <div class="wbpro-list">
+        <div class="item1">
+          <div class="text"><a>${comment.user.screen_name}</a>:<span>${comment.text}</span></div>
+          <div class="info woo-box-flex woo-box-alignCenter woo-box-justifyBetween">
+            <div>${time.toLocaleString()} <span>${comment.source}</span></div>
+          </div>
+          ${imagesHTML}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 从评论中提取图片
+   */
+  function extractImagesFromComment(comment) {
+    const imgs = [];
+
+    if (comment.url_struct) {
+      comment.url_struct.forEach((item) => {
+        const picInfos = item.pic_infos;
+        if (picInfos) {
+          for (const pic of Object.values(picInfos)) {
+            if (pic.large?.url) {
+              imgs.push(pic.large.url);
+            }
+          }
+        }
+      });
+    }
+
+    return imgs;
+  }
+
+  // ============ 页面初始化 ============
+
+  /**
+   * 初始化页面
+   */
+  function initPage() {
+    if (location.host !== 'weibo.com' && location.host !== 'www.weibo.com') {
+      return false;
+    }
+
+    // 判断是否在详情页
+    const detailPage = document.querySelector(CLASS.DETAIL_PAGE);
+    if (!detailPage) {
+      console.log('当前页面不是详情页');
+      return false;
+    }
+
+    const cards = document.body.querySelectorAll(CLASS.ARTICLE);
+    console.log('当前页面共有文章:', cards.length);
+    cards.forEach(card => handleCard(card));
+
+    return true;
+  }
+
+  /**
+   * 主要初始化函数
+   */
+  function main() {
+
+    // // 尝试立即初始化
+    // initPage();
+    setTimeout(() => {
+      initPage();
+    }, 3000);
+
+    console.log('当前过滤设置:', GM_getValue(SETTINGS.FILTER_AUTHOR, false));
+  }
+
+  // 启动脚本
+  main();
 })();
