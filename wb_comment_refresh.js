@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         微博评论自动刷新
 // @namespace    wb_comment_refresh
-// @version      0.0.3
+// @version      0.0.4
 // @description  微博评论自动刷新，优化版
 // @author       scriptsmay
 // @match        *://weibo.com/*
@@ -31,11 +31,13 @@ const CLASS = {
   // 工具栏相关
   TOOLBAR_BOX_CLASS: 'woo-box-flex',
   TOOLBAR_ITEM: 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V',
-  TOOLBAR_BUTTON_WRAP: 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ toolbar_wrap_np6Ug',
+  TOOLBAR_BUTTON_WRAP:
+    'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ toolbar_wrap_np6Ug',
   TOOLBAR_BUTTON: 'woo-like-main toolbar_btn_Cg9tz',
   TOOLBAR_ACTIVE: '_cur_198pe_148',
   TOOLBAR_NUM: 'toolbar_num_JXZul',
-  TOOLBAR_LEFT: 'woo-box-flex woo-box-alignCenter toolbar_left_2vlsY toolbar_main_3Mxwo',
+  TOOLBAR_LEFT:
+    'woo-box-flex woo-box-alignCenter toolbar_left_2vlsY toolbar_main_3Mxwo',
 
   // 按钮相关
   LIKE_ICON_WRAP: 'woo-like-iconWrap',
@@ -49,7 +51,7 @@ const CLASS = {
   // 其他元素
   DETAIL_PAGE: '._detail_zsq3w_2',
   TIME_LINK: 'head-info_time_6sFQg',
-  PICTURE_VIEWER: 'picture-viewer_pic_37YQ3'
+  PICTURE_VIEWER: 'picture-viewer_pic_37YQ3',
 };
 
 // 按钮配置
@@ -57,24 +59,24 @@ const BUTTON_CONFIG = {
   REFRESH: {
     title: '刷新',
     iconClass: CLASS.LIKE_ICON,
-    text: '刷新'
+    text: '刷新',
   },
   FILTER: {
     title: '只看博主',
     iconClass: CLASS.FILTER_ICON,
-    text: '过滤'
-  }
+    text: '过滤',
+  },
 };
 
 // API配置
 const API_CONFIG = {
   SHOW_STATUS: '/ajax/statuses/show',
-  BUILD_COMMENTS: '/ajax/statuses/buildComments'
+  BUILD_COMMENTS: '/ajax/statuses/buildComments',
 };
 
 // 全局设置键名
 const SETTINGS = {
-  FILTER_AUTHOR: 'filterAuthor'
+  FILTER_AUTHOR: 'filterAuthor',
 };
 
 // ============ 全局变量 ============
@@ -103,7 +105,11 @@ let globalTimerId;
    */
   function httpRequest(url, method = 'GET', data = null) {
     return new Promise(function (resolve, reject) {
-      if (method.toUpperCase() === 'GET' && typeof data === 'object' && data !== null) {
+      if (
+        method.toUpperCase() === 'GET' &&
+        typeof data === 'object' &&
+        data !== null
+      ) {
         const queryString = objectToQueryString(data);
         url += (url.includes('?') ? '&' : '?') + queryString;
       }
@@ -127,7 +133,10 @@ let globalTimerId;
       if (method.toUpperCase() === 'GET') {
         oReq.send();
       } else if (typeof data === 'string') {
-        oReq.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        oReq.setRequestHeader(
+          'Content-Type',
+          'application/x-www-form-urlencoded',
+        );
         oReq.send(data);
       } else if (typeof data === 'object' && data !== null) {
         oReq.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
@@ -207,7 +216,8 @@ let globalTimerId;
    * 处理卡片，添加功能按钮
    */
   function handleCard(card) {
-    const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
+    const footer =
+      card.querySelectorAll('footer')[1] || card.querySelector('footer');
     if (!footer) return;
     console.log('footer');
 
@@ -236,10 +246,28 @@ let globalTimerId;
     const { buttonDiv, button } = createButtonElement(
       BUTTON_CONFIG.REFRESH,
       CLASS.REFRESH_BUTTON,
-      handleRefreshClick
+      handleRefreshClick,
     );
 
     insertToToolbarFirst(container, buttonDiv);
+  }
+
+  /**
+   * 从 URL 中解析微博帖子 ID（兼容路径后带 query / hash 参数的情况）
+   * 例如 https://weibo.com/7778237414/Rffbp9buy?sudaref=xxx → Rffbp9buy
+   */
+  function getPostIdFromUrl(urlString) {
+    try {
+      const url = new URL(urlString);
+      const segments = url.pathname.split('/').filter(Boolean);
+      const last = segments.pop();
+      if (last && /^[A-Za-z0-9]+$/.test(last)) {
+        return last;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -255,18 +283,23 @@ let globalTimerId;
       return;
     }
 
+    const postId = getPostIdFromUrl(location.href);
+    if (!postId) {
+      console.warn('[wb_comment_refresh] 无法从 URL 解析帖子 ID:', location.href);
+      return;
+    }
+
     // 显示高亮
     this.classList.add(CLASS.TOOLBAR_ACTIVE);
 
-    const postLink = location.href;
-    console.log('click refresh postLink', postLink);
-
-    let postId = postLink.split('/').pop();
     const url = `https://${location.host}${API_CONFIG.SHOW_STATUS}?id=${postId}`;
 
     const resJson = await httpRequest(url);
-    if (resJson) {
+    if (resJson && resJson.id && resJson.user) {
       startRefresh(resJson);
+    } else {
+      console.warn('[wb_comment_refresh] 获取帖子信息失败, postId:', postId, resJson);
+      this.classList.remove(CLASS.TOOLBAR_ACTIVE);
     }
   }
 
@@ -280,7 +313,7 @@ let globalTimerId;
     const { buttonDiv, button } = createButtonElement(
       BUTTON_CONFIG.FILTER,
       `${CLASS.FILTER_BUTTON}${activeClass}`,
-      handleFilterClick
+      handleFilterClick,
     );
 
     insertToToolbarFirst(container, buttonDiv);
@@ -350,7 +383,7 @@ let globalTimerId;
    * 渲染评论列表
    */
   function renderComments(comments) {
-    const html = comments.map(comment => createCommentHTML(comment)).join('');
+    const html = comments.map((comment) => createCommentHTML(comment)).join('');
     const commentBox = document.getElementById('scroller');
 
     if (commentBox) {
@@ -367,9 +400,12 @@ let globalTimerId;
 
     let imagesHTML = '';
     if (imgs.length > 0) {
-      imagesHTML = imgs.map(img =>
-        `<div><img src="${img}" class="${CLASS.PICTURE_VIEWER}" style="max-width:100%;"></div>`
-      ).join('');
+      imagesHTML = imgs
+        .map(
+          (img) =>
+            `<div><img src="${img}" class="${CLASS.PICTURE_VIEWER}" style="max-width:100%;"></div>`,
+        )
+        .join('');
     }
 
     return `
@@ -426,7 +462,7 @@ let globalTimerId;
 
     const cards = document.body.querySelectorAll(CLASS.ARTICLE);
     console.log('当前页面共有文章:', cards.length);
-    cards.forEach(card => handleCard(card));
+    cards.forEach((card) => handleCard(card));
 
     return true;
   }
@@ -435,7 +471,6 @@ let globalTimerId;
    * 主要初始化函数
    */
   function main() {
-
     // // 尝试立即初始化
     // initPage();
     setTimeout(() => {
